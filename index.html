@@ -219,6 +219,14 @@ textarea{resize:vertical;line-height:1.6;min-height:84px}
 #pdfPreview .pdf-page{box-shadow:0 6px 28px rgba(59,53,168,.16);flex:0 0 auto}
 #pdfSource{position:fixed;left:-10000px;top:0;width:794px;pointer-events:none}
 
+
+/* ── VOLVER A INICIAR (al pie de la vista previa) ──────── */
+.restart{display:flex;flex-direction:column;align-items:center;gap:14px;margin:34px 0 0;padding-top:26px;border-top:1px solid var(--border)}
+.restart-confirm{max-width:480px;text-align:center;background:#fff;border:1.5px solid var(--coral);border-radius:14px;padding:18px 22px}
+.restart-confirm p{font-size:13.5px;line-height:1.65;color:var(--sub);margin-bottom:14px}
+.restart-confirm strong{color:var(--ink)}
+.restart-confirm .actions-row{justify-content:center}
+
 /* ── FOOTER (gradiente, base Zona 2) ───────────────────── */
 .tk-footer{background:var(--grad);padding:38px 24px 30px;text-align:center}
 .tk-footer-in{max-width:700px;margin:0 auto}
@@ -612,7 +620,6 @@ textarea{resize:vertical;line-height:1.6;min-height:84px}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
         Enviarme mi plan por mail</button>
       <div class="actions-row">
-        <button class="btn-outline" id="btnPdf" data-action="download">Descargar PDF</button>
         <button class="btn-ghost" data-action="toReu">Volver a editar</button>
       </div>
       <p class="note" style="text-align:center;max-width:500px">Al enviarlo, el plan te llega por mail y Tenkai recibe una copia para acompañar tu proceso de diseño de carrera.</p>
@@ -620,6 +627,13 @@ textarea{resize:vertical;line-height:1.6;min-height:84px}
 
     <div class="pv-title no-print">Vista previa de tu PDF</div>
     <div id="pdfPreview" class="print-keep"></div>
+    <div class="restart no-print" id="restartBox">
+      <button class="btn-ghost" id="btnRestart" data-action="restart">Volver a iniciar</button>
+      <div class="restart-confirm hidden" id="restartConfirm">
+        <p><strong>Volver a iniciar borra todo lo que cargaste en este dispositivo</strong> y te lleva al principio para hacer el ejercicio desde cero. Lo que ya enviaste por mail no se borra.</p>
+        <div class="actions-row"><button class="btn" data-action="restartYes">Sí, empezar de cero</button><button class="btn-ghost" data-action="restartNo">Cancelar</button></div>
+      </div>
+    </div>
   </div></div>
 </div>
 
@@ -1007,13 +1021,6 @@ async function makePdf(){
   return pdf;
 }
 function pdfName(){return 'Plan-de-Accion-12M_'+slug(fullName())+'.pdf';}
-async function downloadPdf(){
-  if(!ensureLibs()){toast('No se pudo cargar el generador de PDF. Us\u00e1 Ctrl+P para imprimir.');window.print();return;}
-  var b=$('btnPdf');b.disabled=true;
-  try{var pdf=await makePdf();pdf.save(pdfName());}
-  catch(e){console.error(e);toast('No se pudo generar el PDF. Prob\u00e1 de nuevo.');}
-  b.disabled=false;
-}
 function payload(pdfB64){
   var sm=state.startMonth||0;
   return {
@@ -1086,11 +1093,29 @@ document.addEventListener('click',function(e){
     case 'dec':setDec(parseInt(el.getAttribute('data-i'),10),el.getAttribute('data-v'));break;
     case 'freq':state.reu.freq=el.getAttribute('data-v');save();renderReu();break;
     case 'send':sendPlan();break;
-    case 'download':downloadPdf();break;
+    case 'restart':$('btnRestart').classList.add('hidden');$('restartConfirm').classList.remove('hidden');break;
+    case 'restartNo':$('restartConfirm').classList.add('hidden');$('btnRestart').classList.remove('hidden');break;
+    case 'restartYes':resetAll();break;
   }
 });
 $('customChip').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();addChip();}});
 window.addEventListener('resize',scalePreview);
+
+
+/* \u2500\u2500 VOLVER A INICIAR \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+var SEND_HTML = $('btnSend').innerHTML;
+function resetAll(){
+  try{localStorage.removeItem(LS_KEY);localStorage.removeItem(LS_OLD);}catch(e){}
+  state=freshState();sending=false;
+  $('pdfPreview').innerHTML='';$('pdfSource').innerHTML='';
+  setStatus('');
+  $('btnSend').disabled=false;$('btnSend').innerHTML=SEND_HTML;
+  $('restartConfirm').classList.add('hidden');$('btnRestart').classList.remove('hidden');
+  $('ackIA').checked=false;
+  hydrate();renderChips();updPrompts();checkStart();
+  showPage('pgIntro');
+  toast('Listo, empez\u00e1s de cero.');
+}
 
 /* \u2500\u2500 ARRANQUE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 load();
